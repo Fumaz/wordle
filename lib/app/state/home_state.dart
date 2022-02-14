@@ -93,14 +93,15 @@ class WordleHomeState extends State<WordleHomePage> {
     return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
           leading: GestureDetector(
-            child: Text(getEmoji(language), style: TextStyle(fontSize: 35)),
+            child: Icon(CupertinoIcons.wand_stars),
             onTap: () {
               pickLanguage();
             },
           ),
           middle: Text('Wordle'),
         ),
-        child: Column(
+        child: SafeArea(
+            child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Row(
@@ -125,6 +126,6 @@ class WordleHomeState extends State<WordleHomePage> {
               },
             ),
           ],
-        ));
+        )));
   }
 }

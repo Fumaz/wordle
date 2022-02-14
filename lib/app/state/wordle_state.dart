@@ -145,8 +145,8 @@ class WordleState extends State<WordlePage> {
 
   Widget createBox(int index, String letter, bool guessed) {
     return SizedBox(
-      width: 75,
-      height: 75,
+      width: 50,
+      height: 50,
       child: Container(
         decoration: BoxDecoration(
           color: getBoxColor(index, letter, guessed),
@@ -202,10 +202,10 @@ class WordleState extends State<WordlePage> {
   Widget createKeyboardLetter(String letter) {
     return CupertinoButton.filled(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        minSize: 37,
+        minSize: 30,
         child: Text(
           letter,
-          style: const TextStyle(fontSize: 25),
+          style: const TextStyle(fontSize: 20),
         ),
         onPressed: uselessLetters.contains(letter)
             ? null
@@ -227,7 +227,7 @@ class WordleState extends State<WordlePage> {
   Widget createEnterKey() {
     return CupertinoButton.filled(
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
-        minSize: 37,
+        minSize: 30,
         child: const Icon(CupertinoIcons.check_mark_circled_solid),
         onPressed: disabled ? null : () {
           setState(() {
@@ -255,7 +255,7 @@ class WordleState extends State<WordlePage> {
   Widget createBackspaceKey() {
     return CupertinoButton.filled(
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
-        minSize: 37,
+        minSize: 30,
         child: const Icon(CupertinoIcons.delete_left),
         onPressed: disabled ? null : () {
           setState(() {
@@ -360,7 +360,7 @@ class WordleState extends State<WordlePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ...createRows(),
-            const Padding(padding: EdgeInsets.only(top: 50)),
+            const Padding(padding: EdgeInsets.only(top: 25)),
             ...createKeyboard()
           ],
         ));
