@@ -1,8 +1,12 @@
+import 'dart:math';
+
 import 'package:flutter/cupertino.dart';
 import 'package:wordle/app/page/home_page.dart';
 import 'package:wordle/app/page/wordle_page.dart';
+import 'package:wordle/language.dart';
+import 'package:wordle/settings.dart' as settings;
 
-class WorldeHomeState extends State<WordleHomePage> {
+class WordleHomeState extends State<WordleHomePage> {
   String _selectedCategory = '';
 
   Widget selector(IconData icon, String label, Color color) {
@@ -28,10 +32,72 @@ class WorldeHomeState extends State<WordleHomePage> {
         });
   }
 
+  Future<List<String>> getSolutions() async {
+    return (await DefaultAssetBundle.of(context)
+            .loadString(getAssetPath() + 'solutions'))
+        .split('\n');
+  }
+
+  void chooseDaily() {
+    getSolutions().then((solutions) {
+      int seed =
+          DateTime.now().year ^ DateTime.now().month ^ DateTime.now().day;
+      Random random = Random(seed);
+
+      int index = random.nextInt(solutions.length);
+      String solution = solutions[index];
+
+      Navigator.of(context).pushReplacement(CupertinoPageRoute(
+          builder: (context) => WordlePage(word: solution.toUpperCase())));
+    });
+  }
+
+  void chooseRandom() {
+    getSolutions().then((solutions) {
+      int seed = DateTime.now().millisecondsSinceEpoch;
+      Random random = Random(seed);
+
+      int index = random.nextInt(solutions.length);
+      String solution = solutions[index];
+
+      Navigator.of(context).pushReplacement(CupertinoPageRoute(
+          builder: (context) => WordlePage(word: solution.toUpperCase())));
+    });
+  }
+
+  void pickLanguage() {
+    showCupertinoDialog(
+        context: context,
+        builder: (_) {
+          return CupertinoAlertDialog(title: Text("Pick a language"), actions: [
+            for (Language language in Language.values)
+              CupertinoDialogAction(
+                child: Text(getEmoji(language)),
+                onPressed: () {
+                  Navigator.pop(context);
+                  settings
+                      .set("language", getDisplayName(language))
+                      .then((value) {
+                    setState(() {});
+                  });
+                },
+              )
+          ]);
+        });
+  }
+
   @override
   Widget build(BuildContext context) {
+    Language language = getCurrentLanguage();
+
     return CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(
+        navigationBar: CupertinoNavigationBar(
+          leading: GestureDetector(
+            child: Text(getEmoji(language), style: TextStyle(fontSize: 35)),
+            onTap: () {
+              pickLanguage();
+            },
+          ),
           middle: Text('Wordle'),
         ),
         child: Column(
@@ -51,8 +117,11 @@ class WorldeHomeState extends State<WordleHomePage> {
             CupertinoButton.filled(
               child: Text('Continue'),
               onPressed: () {
-                Navigator.of(context).pushReplacement(
-                    CupertinoPageRoute(builder: (context) => const WordlePage(word: "CYNIC")));
+                if (_selectedCategory == 'Daily') {
+                  chooseDaily();
+                } else if (_selectedCategory == 'Random') {
+                  chooseRandom();
+                }
               },
             ),
           ],

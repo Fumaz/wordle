@@ -12,6 +12,7 @@ class WordleApp extends StatelessWidget {
         primaryColor: CupertinoColors.systemPink
       ),
       home: WordleHomePage(),
+      debugShowCheckedModeBanner: false,
     );
   }
 

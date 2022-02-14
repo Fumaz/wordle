@@ -6,5 +6,5 @@ class WordleHomePage extends StatefulWidget {
   const WordleHomePage({Key? key}) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => WorldeHomeState();
+  State<StatefulWidget> createState() => WordleHomeState();
 }

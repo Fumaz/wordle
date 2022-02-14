@@ -2,13 +2,32 @@ import 'package:flutter/cupertino.dart';
 import 'package:wordle/app/page/home_page.dart';
 import 'package:wordle/app/page/wordle_page.dart';
 import 'package:wordle/app/state/home_state.dart';
+import 'package:wordle/language.dart';
 
 class WordleState extends State<WordlePage> {
   late String word = widget.word;
   final List<String> guesses = [];
   final Set<String> uselessLetters = {};
+  final Set<String> allowedWords = {};
   String currentGuess = '';
   bool disabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loadAllowedWords();
+  }
+
+  void loadAllowedWords() async {
+    List<String> allowed = (await DefaultAssetBundle.of(context).loadString(
+        getAssetPath() + 'words')).split('\n');
+
+    for (String word in allowed) {
+      allowedWords.add(word.toUpperCase());
+    }
+
+    print('Allowed words: ${allowedWords.length}');
+  }
 
   void disableKeyboard() {
     disabled = true;
@@ -41,8 +60,7 @@ class WordleState extends State<WordlePage> {
       'Z'
     });
 
-    setState(() {
-    });
+    setState(() {});
   }
 
   void showWinDialog() {
@@ -192,18 +210,18 @@ class WordleState extends State<WordlePage> {
         onPressed: uselessLetters.contains(letter)
             ? null
             : () {
-                setState(() {
-                  if (uselessLetters.contains(letter)) {
-                    return;
-                  }
+          setState(() {
+            if (uselessLetters.contains(letter)) {
+              return;
+            }
 
-                  if (currentGuess.length >= 5) {
-                    return;
-                  }
+            if (currentGuess.length >= 5) {
+              return;
+            }
 
-                  currentGuess += letter;
-                });
-              });
+            currentGuess += letter;
+          });
+        });
   }
 
   Widget createEnterKey() {
@@ -213,6 +231,14 @@ class WordleState extends State<WordlePage> {
         child: const Icon(CupertinoIcons.check_mark_circled_solid),
         onPressed: disabled ? null : () {
           setState(() {
+            if (currentGuess.length < 5) {
+              return;
+            }
+
+            if (!allowedWords.contains(currentGuess) && currentGuess != word) {
+              return;
+            }
+
             guesses.add(currentGuess);
 
             if (currentGuess == word) {
@@ -310,10 +336,11 @@ class WordleState extends State<WordlePage> {
     rows[4].add(createBackspaceKey());
 
     return rows
-        .map((row) => Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: row,
-            ))
+        .map((row) =>
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: row,
+        ))
         .toList();
   }
 
@@ -321,9 +348,11 @@ class WordleState extends State<WordlePage> {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
-          leading: CupertinoButton(child: const Icon(CupertinoIcons.home), onPressed: () {
+          leading: CupertinoButton(
+              child: const Icon(CupertinoIcons.home), onPressed: () {
             Navigator.of(context).pushReplacement(
-                CupertinoPageRoute(builder: (context) => const WordleHomePage()));
+                CupertinoPageRoute(
+                    builder: (context) => const WordleHomePage()));
           }),
           middle: const Text('Wordle'),
         ),
