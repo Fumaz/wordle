@@ -4,6 +4,8 @@ import 'package:wordle/app/page/home_page.dart';
 import 'package:wordle/app/page/wordle_page.dart';
 import 'package:wordle/app/state/home_state.dart';
 import 'package:wordle/language.dart';
+import 'package:share_plus/share_plus.dart';
+
 
 class WordleState extends State<WordlePage> {
   late String word = widget.word.toUpperCase().trim();
@@ -89,6 +91,7 @@ class WordleState extends State<WordlePage> {
                 child: const Text('Share'),
                 onPressed: () {
                   Navigator.pop(context);
+                  Share.share(createEmojiString(), subject: 'Wordle');
                 },
               ),
             ],
@@ -142,7 +145,10 @@ class WordleState extends State<WordlePage> {
       this.occurrences[letter] = occurrences + 1;
       return CupertinoColors.systemYellow;
     } else if (letter != '' && letter != ' ') {
-      uselessLetters.add(letter);
+      if (!word.contains(letter)) {
+        uselessLetters.add(letter);
+      }
+
       return CupertinoColors.inactiveGray;
     } else {
       return const CupertinoDynamicColor.withBrightness(
@@ -196,6 +202,46 @@ class WordleState extends State<WordlePage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: children,
     );
+  }
+
+  String createEmojiString() {
+    occurrences.clear();
+
+    String disabled = "⬛";
+    String almost = "🟨";
+    String correct = "🟩";
+
+    String emoji = "Wordle 02/14/2022\n";
+    for (int i = 0; i < 6; i++) {
+      emoji += "\n";
+
+      String guess = guesses.length > i ? guesses[i] : '';
+
+      for (var j = 0; j < 5; j++) {
+        String letter = word.length > j ? word[j] : '';
+
+        int occurrences = this.occurrences[letter] ?? 0;
+        int inWord = word.characters.where((c) => c == letter).length;
+
+        if (word[j] == letter) {
+          this.occurrences[letter] = occurrences + 1;
+          emoji += correct;
+        } else if (word.contains(letter) && letter != '' && letter != ' ' && occurrences < inWord) {
+          this.occurrences[letter] = occurrences + 1;
+          emoji += almost;
+        } else if (letter != '' && letter != ' ') {
+          if (!word.contains(letter)) {
+            uselessLetters.add(letter);
+          }
+
+          emoji += disabled;
+        } else {
+          emoji += disabled;
+        }
+      }
+    }
+
+    return emoji;
   }
 
   List<Widget> createRows() {
