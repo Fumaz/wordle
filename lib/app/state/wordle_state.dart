@@ -96,7 +96,7 @@ class WordleState extends State<WordlePage> {
 
   Widget createEnterKey() {
     return CupertinoButton.filled(
-        padding: const EdgeInsets.only(left: 14, right: 14, top: 13, bottom: 13),
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
         minSize: 37,
         child: Icon(CupertinoIcons.check_mark_circled_solid),
         onPressed: () {
@@ -109,7 +109,7 @@ class WordleState extends State<WordlePage> {
 
   Widget createBackspaceKey() {
     return CupertinoButton.filled(
-        padding: const EdgeInsets.only(left: 14, right: 14, top: 13, bottom: 13),
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
         minSize: 37,
         child: Icon(CupertinoIcons.delete_left),
         onPressed: () {
