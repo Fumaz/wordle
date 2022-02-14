@@ -1,14 +1,16 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:wordle/app/page/home_page.dart';
 import 'package:wordle/app/page/wordle_page.dart';
 import 'package:wordle/app/state/home_state.dart';
 import 'package:wordle/language.dart';
 
 class WordleState extends State<WordlePage> {
-  late String word = widget.word;
+  late String word = widget.word.toUpperCase().trim();
   final List<String> guesses = [];
   final Set<String> uselessLetters = {};
   final Set<String> allowedWords = {};
+  final Map<String, int> occurrences = {};
   String currentGuess = '';
   bool disabled = false;
 
@@ -23,7 +25,7 @@ class WordleState extends State<WordlePage> {
         getAssetPath() + 'words')).split('\n');
 
     for (String word in allowed) {
-      allowedWords.add(word.toUpperCase());
+      allowedWords.add(word.toUpperCase().trim());
     }
 
     print('Allowed words: ${allowedWords.length}');
@@ -130,9 +132,14 @@ class WordleState extends State<WordlePage> {
           color: CupertinoColors.white, darkColor: CupertinoColors.black);
     }
 
+    int occurrences = this.occurrences[letter] ?? 0;
+    int inWord = word.characters.where((c) => c == letter).length;
+
     if (word[index] == letter) {
+      this.occurrences[letter] = occurrences + 1;
       return CupertinoColors.systemGreen;
-    } else if (word.contains(letter) && letter != '' && letter != ' ') {
+    } else if (word.contains(letter) && letter != '' && letter != ' ' && occurrences < inWord) {
+      this.occurrences[letter] = occurrences + 1;
       return CupertinoColors.systemYellow;
     } else if (letter != '' && letter != ' ') {
       uselessLetters.add(letter);
@@ -155,14 +162,22 @@ class WordleState extends State<WordlePage> {
             width: 1,
           ),
         ),
-        child: Center(
-          child: Text(
-            letter,
-            style: const TextStyle(
-              fontSize: 50,
-              fontWeight: FontWeight.bold,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  letter,
+                  style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -183,6 +198,7 @@ class WordleState extends State<WordlePage> {
   }
 
   List<Widget> createRows() {
+    occurrences.clear();
     List<Widget> rows = [];
 
     for (int i = 0; i < 6; i++) {
@@ -231,17 +247,18 @@ class WordleState extends State<WordlePage> {
         child: const Icon(CupertinoIcons.check_mark_circled_solid),
         onPressed: disabled ? null : () {
           setState(() {
+            currentGuess = currentGuess.trim();
             if (currentGuess.length < 5) {
               return;
             }
 
-            if (!allowedWords.contains(currentGuess) && currentGuess != word) {
+            if (!allowedWords.contains(currentGuess.toUpperCase()) && currentGuess.toUpperCase() != word.toUpperCase()) {
               return;
             }
 
-            guesses.add(currentGuess);
+            guesses.add(currentGuess.toUpperCase());
 
-            if (currentGuess == word) {
+            if (currentGuess.toUpperCase() == word.toUpperCase()) {
               showWinDialog();
             } else if (guesses.length >= 6) {
               showLoseDialog();
