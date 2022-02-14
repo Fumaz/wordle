@@ -1,13 +1,117 @@
 import 'package:flutter/cupertino.dart';
+import 'package:wordle/app/page/home_page.dart';
 import 'package:wordle/app/page/wordle_page.dart';
+import 'package:wordle/app/state/home_state.dart';
 
 class WordleState extends State<WordlePage> {
   late String word = widget.word;
   final List<String> guesses = [];
   final Set<String> uselessLetters = {};
   String currentGuess = '';
+  bool disabled = false;
 
-  Color getBoxColor(int index, String letter) {
+  void disableKeyboard() {
+    disabled = true;
+    uselessLetters.addAll({
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+      'G',
+      'H',
+      'I',
+      'J',
+      'K',
+      'L',
+      'M',
+      'N',
+      'O',
+      'P',
+      'Q',
+      'R',
+      'S',
+      'T',
+      'U',
+      'V',
+      'W',
+      'X',
+      'Y',
+      'Z'
+    });
+
+    setState(() {
+    });
+  }
+
+  void showWinDialog() {
+    disableKeyboard();
+
+    showCupertinoDialog(
+        context: context,
+        builder: (_) {
+          return CupertinoAlertDialog(
+            title: const Text('You win!'),
+            content: Text('The word was $word'),
+            actions: <Widget>[
+              CupertinoDialogAction(
+                child: const Text('Home'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                          builder: (context) => const WordleHomePage()));
+                },
+              ),
+              CupertinoDialogAction(
+                child: const Text('Share'),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        });
+  }
+
+  void showLoseDialog() {
+    disableKeyboard();
+
+    showCupertinoDialog(
+        context: context,
+        builder: (_) {
+          return CupertinoAlertDialog(
+            title: const Text('You lose!'),
+            content: Text('The word was $word'),
+            actions: <Widget>[
+              CupertinoDialogAction(
+                child: const Text('Home'),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                      context,
+                      CupertinoPageRoute(
+                          builder: (context) => const WordleHomePage()));
+                },
+              ),
+              CupertinoDialogAction(
+                child: const Text('Share'),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        });
+  }
+
+  Color getBoxColor(int index, String letter, bool guessed) {
+    if (!guessed) {
+      return const CupertinoDynamicColor.withBrightness(
+          color: CupertinoColors.white, darkColor: CupertinoColors.black);
+    }
+
     if (word[index] == letter) {
       return CupertinoColors.systemGreen;
     } else if (word.contains(letter) && letter != '' && letter != ' ') {
@@ -21,13 +125,13 @@ class WordleState extends State<WordlePage> {
     }
   }
 
-  Widget createBox(int index, String letter) {
+  Widget createBox(int index, String letter, bool guessed) {
     return SizedBox(
       width: 75,
       height: 75,
       child: Container(
         decoration: BoxDecoration(
-          color: getBoxColor(index, letter),
+          color: getBoxColor(index, letter, guessed),
           border: Border.all(
             color: CupertinoColors.black,
             width: 1,
@@ -46,12 +150,12 @@ class WordleState extends State<WordlePage> {
     );
   }
 
-  Widget createRow(String word) {
+  Widget createRow(String word, bool guessed) {
     List<Widget> children = [];
 
     for (var i = 0; i < 5; i++) {
       String letter = word.length > i ? word[i] : '';
-      children.add(createBox(i, letter));
+      children.add(createBox(i, letter, guessed));
     }
 
     return Row(
@@ -65,7 +169,13 @@ class WordleState extends State<WordlePage> {
 
     for (int i = 0; i < 6; i++) {
       String guess = guesses.length > i ? guesses[i] : '';
-      rows.add(createRow(guess));
+      bool guessed = guess != '';
+
+      if (guesses.length == i) {
+        guess = currentGuess;
+      }
+
+      rows.add(createRow(guess, guessed));
     }
 
     return rows;
@@ -77,31 +187,40 @@ class WordleState extends State<WordlePage> {
         minSize: 37,
         child: Text(
           letter,
-          style: TextStyle(fontSize: 25),
+          style: const TextStyle(fontSize: 25),
         ),
-        onPressed: () {
-          setState(() {
-            if (uselessLetters.contains(letter)) {
-              return;
-            }
+        onPressed: uselessLetters.contains(letter)
+            ? null
+            : () {
+                setState(() {
+                  if (uselessLetters.contains(letter)) {
+                    return;
+                  }
 
-            if (currentGuess.length >= 5) {
-              return;
-            }
+                  if (currentGuess.length >= 5) {
+                    return;
+                  }
 
-            currentGuess += letter;
-          });
-        });
+                  currentGuess += letter;
+                });
+              });
   }
 
   Widget createEnterKey() {
     return CupertinoButton.filled(
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
         minSize: 37,
-        child: Icon(CupertinoIcons.check_mark_circled_solid),
-        onPressed: () {
+        child: const Icon(CupertinoIcons.check_mark_circled_solid),
+        onPressed: disabled ? null : () {
           setState(() {
             guesses.add(currentGuess);
+
+            if (currentGuess == word) {
+              showWinDialog();
+            } else if (guesses.length >= 6) {
+              showLoseDialog();
+            }
+
             currentGuess = '';
           });
         });
@@ -111,8 +230,8 @@ class WordleState extends State<WordlePage> {
     return CupertinoButton.filled(
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
         minSize: 37,
-        child: Icon(CupertinoIcons.delete_left),
-        onPressed: () {
+        child: const Icon(CupertinoIcons.delete_left),
+        onPressed: disabled ? null : () {
           setState(() {
             if (currentGuess.isNotEmpty) {
               currentGuess = currentGuess.substring(0, currentGuess.length - 1);
@@ -120,7 +239,7 @@ class WordleState extends State<WordlePage> {
           });
         });
   }
-  
+
   Widget createKeyboardPadding() {
     return const Padding(
       padding: EdgeInsets.only(left: 4),
@@ -128,7 +247,7 @@ class WordleState extends State<WordlePage> {
   }
 
   List<Row> createKeyboard() {
-    List<List<Widget>> rows = [[], [],[],[], []];
+    List<List<Widget>> rows = [[], [], [], [], []];
 
     rows[0].add(createKeyboardLetter('Q'));
     rows[0].add(createKeyboardPadding());
@@ -201,14 +320,20 @@ class WordleState extends State<WordlePage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(
-          middle: Text('Wordle'),
+        navigationBar: CupertinoNavigationBar(
+          leading: CupertinoButton(child: const Icon(CupertinoIcons.home), onPressed: () {
+            Navigator.of(context).pushReplacement(
+                CupertinoPageRoute(builder: (context) => const WordleHomePage()));
+          }),
+          middle: const Text('Wordle'),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [...createRows(),
-            Padding(padding: EdgeInsets.only(top: 50)),
-            ...createKeyboard()],
+          children: [
+            ...createRows(),
+            const Padding(padding: EdgeInsets.only(top: 50)),
+            ...createKeyboard()
+          ],
         ));
   }
 }
