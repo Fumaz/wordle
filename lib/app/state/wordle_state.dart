@@ -184,6 +184,7 @@ class WordleState extends State<WordlePage> {
   }
 
   Widget createRow(String word, bool guessed) {
+    occurrences.clear();
     List<Widget> children = [];
 
     for (var i = 0; i < 5; i++) {
