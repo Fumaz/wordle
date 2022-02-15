@@ -6,13 +6,14 @@ import 'package:wordle/app/state/home_state.dart';
 import 'package:wordle/language.dart';
 import 'package:share_plus/share_plus.dart';
 
+enum GuessState { correct, wrongPosition, wrong }
 
 class WordleState extends State<WordlePage> {
   late String word = widget.word.toUpperCase().trim();
   final List<String> guesses = [];
+  final List<List<GuessState>> guessesResults = [];
   final Set<String> uselessLetters = {};
   final Set<String> allowedWords = {};
-  final Map<String, int> occurrences = {};
   String currentGuess = '';
   bool disabled = false;
 
@@ -23,8 +24,9 @@ class WordleState extends State<WordlePage> {
   }
 
   void loadAllowedWords() async {
-    List<String> allowed = (await DefaultAssetBundle.of(context).loadString(
-        getAssetPath() + 'words')).split('\n');
+    List<String> allowed = (await DefaultAssetBundle.of(context)
+            .loadString(getAssetPath() + 'words'))
+        .split('\n');
 
     for (String word in allowed) {
       allowedWords.add(word.toUpperCase().trim());
@@ -129,40 +131,29 @@ class WordleState extends State<WordlePage> {
         });
   }
 
-  Color getBoxColor(int index, String letter, bool guessed) {
-    if (!guessed) {
+  Color getBoxColor(int rowIndex, int letterIndex) {
+    if (rowIndex >= guessesResults.length) {
       return const CupertinoDynamicColor.withBrightness(
           color: CupertinoColors.white, darkColor: CupertinoColors.black);
     }
 
-    int occurrences = this.occurrences[letter] ?? 0;
-    int inWord = word.characters.where((c) => c == letter).length;
-
-    if (word[index] == letter) {
-      this.occurrences[letter] = occurrences + 1;
+    if (guessesResults[rowIndex][letterIndex] == GuessState.correct) {
       return CupertinoColors.systemGreen;
-    } else if (word.contains(letter) && letter != '' && letter != ' ' && occurrences < inWord) {
-      this.occurrences[letter] = occurrences + 1;
+    } else if (guessesResults[rowIndex][letterIndex] ==
+        GuessState.wrongPosition) {
       return CupertinoColors.systemYellow;
-    } else if (letter != '' && letter != ' ') {
-      if (!word.contains(letter)) {
-        uselessLetters.add(letter);
-      }
-
-      return CupertinoColors.inactiveGray;
     } else {
-      return const CupertinoDynamicColor.withBrightness(
-          color: CupertinoColors.white, darkColor: CupertinoColors.black);
+      return CupertinoColors.inactiveGray;
     }
   }
 
-  Widget createBox(int index, String letter, bool guessed) {
+  Widget createBox(int index, String letter, int rowIndex) {
     return SizedBox(
       width: 50,
       height: 50,
       child: Container(
         decoration: BoxDecoration(
-          color: getBoxColor(index, letter, guessed),
+          color: getBoxColor(rowIndex, index),
           border: Border.all(
             color: CupertinoColors.black,
             width: 1,
@@ -189,13 +180,12 @@ class WordleState extends State<WordlePage> {
     );
   }
 
-  Widget createRow(String word, bool guessed) {
-    occurrences.clear();
+  Widget createRow(String word, int rowIndex) {
     List<Widget> children = [];
 
     for (var i = 0; i < 5; i++) {
       String letter = word.length > i ? word[i] : '';
-      children.add(createBox(i, letter, guessed));
+      children.add(createBox(i, letter, rowIndex));
     }
 
     return Row(
@@ -205,39 +195,22 @@ class WordleState extends State<WordlePage> {
   }
 
   String createEmojiString() {
-    occurrences.clear();
-
     String disabled = "⬛";
     String almost = "🟨";
     String correct = "🟩";
 
     String emoji = "Wordle 02/14/2022\n";
-    for (int i = 0; i < 6; i++) {
+    var resultsMap = {
+      GuessState.correct: correct,
+      GuessState.wrongPosition: almost,
+      GuessState.wrong: disabled
+    };
+    for (int i = 0; i < guessesResults.length; i++) {
       emoji += "\n";
 
-      String guess = guesses.length > i ? guesses[i] : '';
-
       for (var j = 0; j < 5; j++) {
-        String letter = word.length > j ? word[j] : '';
-
-        int occurrences = this.occurrences[letter] ?? 0;
-        int inWord = word.characters.where((c) => c == letter).length;
-
-        if (word[j] == letter) {
-          this.occurrences[letter] = occurrences + 1;
-          emoji += correct;
-        } else if (word.contains(letter) && letter != '' && letter != ' ' && occurrences < inWord) {
-          this.occurrences[letter] = occurrences + 1;
-          emoji += almost;
-        } else if (letter != '' && letter != ' ') {
-          if (!word.contains(letter)) {
-            uselessLetters.add(letter);
-          }
-
-          emoji += disabled;
-        } else {
-          emoji += disabled;
-        }
+        // null coalescing is required by the language but should never happen
+        emoji += resultsMap[guessesResults[i][j]] ?? '?';
       }
     }
 
@@ -245,18 +218,16 @@ class WordleState extends State<WordlePage> {
   }
 
   List<Widget> createRows() {
-    occurrences.clear();
     List<Widget> rows = [];
 
     for (int i = 0; i < 6; i++) {
       String guess = guesses.length > i ? guesses[i] : '';
-      bool guessed = guess != '';
 
       if (guesses.length == i) {
         guess = currentGuess;
       }
 
-      rows.add(createRow(guess, guessed));
+      rows.add(createRow(guess, i));
     }
 
     return rows;
@@ -270,21 +241,55 @@ class WordleState extends State<WordlePage> {
           letter,
           style: const TextStyle(fontSize: 20),
         ),
-        onPressed: uselessLetters.contains(letter)
-            ? null
-            : () {
+        onPressed: () {
           setState(() {
-            if (uselessLetters.contains(letter)) {
-              return;
-            }
-
-            if (currentGuess.length >= 5) {
-              return;
-            }
-
             currentGuess += letter;
           });
         });
+  }
+
+  List<GuessState> computeGuessResults(String currentGuess, String solution) {
+    // compute the color of each character in the guess
+    var foundGuess = [for (var i = 0; i < 5; i++) false];
+    var foundSol = [for (var i = 0; i < 5; i++) false];
+    var rightPos = [for (var i = 0; i < 5; i++) false];
+    var wrongPos = [for (var i = 0; i < 5; i++) false];
+
+    // first see what character are correct
+    for (var i = 0; i < 5; i++) {
+      if (currentGuess[i] == solution[i]) {
+        foundSol[i] = true;
+        foundGuess[i] = true;
+        rightPos[i] = true;
+      }
+    }
+
+    // next find the characters which are correct but in the wrong position
+    for (var i = 0; i < 5; i++) {
+      if (!foundGuess[i]) {
+        for (var j = 0; j < 5; j++) {
+          if (!foundSol[j] && currentGuess[i] == solution[j]) {
+            wrongPos[i] = true;
+            foundGuess[i] = true;
+            foundSol[j] = true;
+          }
+        }
+      }
+    }
+
+    // choose the colours for each letter
+    List<GuessState> guessResults = [];
+    for (var i = 0; i < 5; i++) {
+      if (rightPos[i]) {
+        guessResults.add(GuessState.correct);
+      } else if (wrongPos[i]) {
+        guessResults.add(GuessState.wrongPosition);
+      } else {
+        guessResults.add(GuessState.wrong);
+      }
+    }
+
+    return guessResults;
   }
 
   Widget createEnterKey() {
@@ -292,28 +297,35 @@ class WordleState extends State<WordlePage> {
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
         minSize: 30,
         child: const Icon(CupertinoIcons.check_mark_circled_solid),
-        onPressed: disabled ? null : () {
-          setState(() {
-            currentGuess = currentGuess.trim();
-            if (currentGuess.length < 5) {
-              return;
-            }
+        onPressed: disabled
+            ? null
+            : () {
+                setState(() {
+                  var solution = word.toUpperCase();
+                  currentGuess = currentGuess.trim().toUpperCase();
+                  if (currentGuess.length < 5) {
+                    return;
+                  }
 
-            if (!allowedWords.contains(currentGuess.toUpperCase()) && currentGuess.toUpperCase() != word.toUpperCase()) {
-              return;
-            }
+                  if (!allowedWords.contains(currentGuess) &&
+                      currentGuess != solution) {
+                    return;
+                  }
 
-            guesses.add(currentGuess.toUpperCase());
+                  guesses.add(currentGuess);
 
-            if (currentGuess.toUpperCase() == word.toUpperCase()) {
-              showWinDialog();
-            } else if (guesses.length >= 6) {
-              showLoseDialog();
-            }
+                  guessesResults
+                      .add(computeGuessResults(currentGuess, solution));
 
-            currentGuess = '';
-          });
-        });
+                  if (currentGuess == solution) {
+                    showWinDialog();
+                  } else if (guesses.length >= 6) {
+                    showLoseDialog();
+                  }
+
+                  currentGuess = '';
+                });
+              });
   }
 
   Widget createBackspaceKey() {
@@ -321,13 +333,16 @@ class WordleState extends State<WordlePage> {
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 17),
         minSize: 30,
         child: const Icon(CupertinoIcons.delete_left),
-        onPressed: disabled ? null : () {
-          setState(() {
-            if (currentGuess.isNotEmpty) {
-              currentGuess = currentGuess.substring(0, currentGuess.length - 1);
-            }
-          });
-        });
+        onPressed: disabled
+            ? null
+            : () {
+                setState(() {
+                  if (currentGuess.isNotEmpty) {
+                    currentGuess =
+                        currentGuess.substring(0, currentGuess.length - 1);
+                  }
+                });
+              });
   }
 
   Widget createKeyboardPadding() {
@@ -337,74 +352,30 @@ class WordleState extends State<WordlePage> {
   }
 
   List<Row> createKeyboard() {
+    const keyboardLines = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
     List<List<Widget>> rows = [[], [], [], [], []];
 
-    rows[0].add(createKeyboardLetter('Q'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('W'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('E'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('R'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('T'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('Y'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('U'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('I'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('O'));
-    rows[0].add(createKeyboardPadding());
-    rows[0].add(createKeyboardLetter('P'));
+    rows[4].add(createEnterKey());
+    for (var lineIdx = 0; lineIdx < 3; lineIdx += 1) {
+      for (var chr in keyboardLines[lineIdx].split('')) {
+        if (rows[lineIdx * 2].isNotEmpty) {
+          rows[lineIdx * 2].add(createKeyboardPadding());
+        }
+        rows[lineIdx * 2].add(createKeyboardLetter(chr));
+      }
+    }
 
     rows[1].add(const Padding(padding: EdgeInsets.only(top: 5)));
-
-    rows[2].add(createKeyboardLetter('A'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('S'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('D'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('F'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('G'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('H'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('J'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('K'));
-    rows[2].add(createKeyboardPadding());
-    rows[2].add(createKeyboardLetter('L'));
-
     rows[3].add(const Padding(padding: EdgeInsets.only(top: 5)));
 
-    rows[4].add(createEnterKey());
-    rows[4].add(createKeyboardPadding());
-    rows[4].add(createKeyboardLetter('Z'));
-    rows[4].add(createKeyboardPadding());
-    rows[4].add(createKeyboardLetter('X'));
-    rows[4].add(createKeyboardPadding());
-    rows[4].add(createKeyboardLetter('C'));
-    rows[4].add(createKeyboardPadding());
-    rows[4].add(createKeyboardLetter('V'));
-    rows[4].add(createKeyboardPadding());
-    rows[4].add(createKeyboardLetter('B'));
-    rows[4].add(createKeyboardPadding());
-    rows[4].add(createKeyboardLetter('N'));
-    rows[4].add(createKeyboardPadding());
-    rows[4].add(createKeyboardLetter('M'));
     rows[4].add(createKeyboardPadding());
     rows[4].add(createBackspaceKey());
 
     return rows
-        .map((row) =>
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: row,
-        ))
+        .map((row) => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: row,
+            ))
         .toList();
   }
 
@@ -413,20 +384,21 @@ class WordleState extends State<WordlePage> {
     return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
           leading: CupertinoButton(
-              child: const Icon(CupertinoIcons.home), onPressed: () {
-            Navigator.of(context).pushReplacement(
-                CupertinoPageRoute(
+              child: const Icon(CupertinoIcons.home),
+              onPressed: () {
+                Navigator.of(context).pushReplacement(CupertinoPageRoute(
                     builder: (context) => const WordleHomePage()));
-          }),
+              }),
           middle: const Text('Wordle'),
         ),
-        child: Column(
+        child: SafeArea(
+            child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ...createRows(),
             const Padding(padding: EdgeInsets.only(top: 25)),
             ...createKeyboard()
           ],
-        ));
+        )));
   }
 }
