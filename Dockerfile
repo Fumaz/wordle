@@ -1,5 +1,5 @@
 # Install Operating system and dependencies
-FROM ubuntu:20.04
+FROM ubuntu:latest AS build-env
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -28,6 +28,9 @@ WORKDIR /usr/src/app/
 RUN flutter build web --web-renderer html --release
 
 # make server startup script executable and start the web server
-RUN ["chmod", "+x", "/usr/src/app/server/server.sh"]
+#RUN ["chmod", "+x", "/usr/src/app/server/server.sh"]
 
-ENTRYPOINT ["/usr/src/app/server/server.sh"]
+#ENTRYPOINT ["/usr/src/app/server/server.sh"]
+
+FROM nginx:latest
+COPY --from=build-env /usr/src/app/build/web /usr/share/nginx/html
