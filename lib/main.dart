@@ -3,6 +3,6 @@ import 'package:wordle/app/app.dart';
 import 'package:wordle/settings.dart';
 
 void main() {
-  runApp(const WordleApp());
   setup();
+  runApp(const WordleApp());
 }
