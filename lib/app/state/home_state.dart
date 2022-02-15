@@ -69,7 +69,7 @@ class WordleHomeState extends State<WordleHomePage> {
     showCupertinoDialog(
         context: context,
         builder: (_) {
-          return CupertinoAlertDialog(title: Text("Pick a language"), actions: [
+          return CupertinoAlertDialog(title: const Text("Pick a language"), actions: [
             for (Language language in Language.values)
               CupertinoDialogAction(
                 child: Text(getEmoji(language)),
@@ -93,12 +93,12 @@ class WordleHomeState extends State<WordleHomePage> {
     return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
           leading: GestureDetector(
-            child: Icon(CupertinoIcons.wand_stars),
+            child: const Icon(CupertinoIcons.wand_stars),
             onTap: () {
               pickLanguage();
             },
           ),
-          middle: Text('Wordle'),
+          middle: const Text('Wordle'),
         ),
         child: SafeArea(
             child: Column(
@@ -109,14 +109,14 @@ class WordleHomeState extends State<WordleHomePage> {
               children: [
                 selector(CupertinoIcons.calendar, 'Daily',
                     CupertinoColors.systemYellow),
-                Padding(padding: const EdgeInsets.all(20.0)),
+                const Padding(padding: EdgeInsets.all(20.0)),
                 selector(CupertinoIcons.qrcode, 'Random',
                     CupertinoColors.systemBlue),
               ],
             ),
-            Padding(padding: const EdgeInsets.all(35.0)),
+            const Padding(padding: EdgeInsets.all(35.0)),
             CupertinoButton.filled(
-              child: Text('Continue'),
+              child: const Text('Continue'),
               onPressed: () {
                 if (_selectedCategory == 'Daily') {
                   chooseDaily();
