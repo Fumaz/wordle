@@ -12,7 +12,7 @@ class WordleState extends State<WordlePage> {
   late String word = widget.word.toUpperCase().trim();
   final List<String> guesses = [];
   final List<List<GuessState>> guessesResults = [];
-  final Set<String> uselessLetters = {};
+  final Map<String, GuessState> keyboardHints = {};
   final Set<String> allowedWords = {};
   String currentGuess = '';
   bool disabled = false;
@@ -31,42 +31,12 @@ class WordleState extends State<WordlePage> {
     for (String word in allowed) {
       allowedWords.add(word.toUpperCase().trim());
     }
-
-    print('Allowed words: ${allowedWords.length}');
   }
 
   void disableKeyboard() {
-    disabled = true;
-    uselessLetters.addAll({
-      'A',
-      'B',
-      'C',
-      'D',
-      'E',
-      'F',
-      'G',
-      'H',
-      'I',
-      'J',
-      'K',
-      'L',
-      'M',
-      'N',
-      'O',
-      'P',
-      'Q',
-      'R',
-      'S',
-      'T',
-      'U',
-      'V',
-      'W',
-      'X',
-      'Y',
-      'Z'
+    setState(() {
+      disabled = true;
     });
-
-    setState(() {});
   }
 
   void showWinDialog() {
@@ -147,6 +117,20 @@ class WordleState extends State<WordlePage> {
     }
   }
 
+  Color getKeyColor(String letter) {
+    if (!keyboardHints.containsKey(letter)) {
+      return CupertinoTheme.of(context).primaryColor;
+    }
+
+    if (keyboardHints[letter] == GuessState.correct) {
+      return CupertinoColors.systemGreen;
+    } else if (keyboardHints[letter] == GuessState.wrongPosition) {
+      return CupertinoColors.systemYellow;
+    } else {
+      return CupertinoColors.inactiveGray;
+    }
+  }
+
   Widget createBox(int index, String letter, int rowIndex) {
     return SizedBox(
       width: 50,
@@ -195,15 +179,11 @@ class WordleState extends State<WordlePage> {
   }
 
   String createEmojiString() {
-    String disabled = "⬛";
-    String almost = "🟨";
-    String correct = "🟩";
-
     String emoji = "Wordle 02/14/2022\n";
     var resultsMap = {
-      GuessState.correct: correct,
-      GuessState.wrongPosition: almost,
-      GuessState.wrong: disabled
+      GuessState.correct: "🟩",
+      GuessState.wrongPosition: "🟨",
+      GuessState.wrong: "⬛"
     };
     for (int i = 0; i < guessesResults.length; i++) {
       emoji += "\n";
@@ -234,18 +214,24 @@ class WordleState extends State<WordlePage> {
   }
 
   Widget createKeyboardLetter(String letter) {
-    return CupertinoButton.filled(
+    return CupertinoButton(
         padding: const EdgeInsets.symmetric(vertical: 10),
         minSize: 30,
         child: Text(
           letter,
           style: const TextStyle(fontSize: 20),
         ),
-        onPressed: () {
-          setState(() {
-            currentGuess += letter;
-          });
-        });
+        color: getKeyColor(letter),
+        onPressed: disabled
+            ? null
+            : () {
+                setState(() {
+                  if (currentGuess.length >= 5) {
+                    return;
+                  }
+                  currentGuess += letter;
+                });
+              });
   }
 
   List<GuessState> computeGuessResults(String currentGuess, String solution) {
@@ -314,8 +300,24 @@ class WordleState extends State<WordlePage> {
 
                   guesses.add(currentGuess);
 
-                  guessesResults
-                      .add(computeGuessResults(currentGuess, solution));
+                  var guessResults =
+                      computeGuessResults(currentGuess, solution);
+                  guessesResults.add(guessResults);
+                  const hintValue = {
+                    GuessState.correct: 2,
+                    GuessState.wrongPosition: 1,
+                    GuessState.wrong: 0
+                  };
+                  for (var i = 0; i < 5; i++) {
+                    var letter = currentGuess[i];
+
+                    var currHintValue = hintValue[keyboardHints[letter]] ?? -1;
+                    var newHintValue = hintValue[guessResults[i]] ?? -1;
+
+                    if (newHintValue > currHintValue) {
+                      keyboardHints[letter] = guessResults[i];
+                    }
+                  }
 
                   if (currentGuess == solution) {
                     showWinDialog();
