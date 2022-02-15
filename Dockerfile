@@ -25,7 +25,8 @@ RUN flutter config --enable-web
 RUN mkdir /usr/src/app/
 COPY . /usr/src/app/
 WORKDIR /usr/src/app/
-RUN flutter build web --web-renderer html --release
+RUN flutter clean
+RUN flutter build web --release --web-renderer=html
 
 # make server startup script executable and start the web server
 #RUN ["chmod", "+x", "/usr/src/app/server/server.sh"]
@@ -34,3 +35,4 @@ RUN flutter build web --web-renderer html --release
 
 FROM nginx:latest
 COPY --from=build-env /usr/src/app/build/web /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
