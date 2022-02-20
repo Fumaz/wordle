@@ -179,7 +179,7 @@ class WordleState extends State<WordlePage> {
   }
 
   String createEmojiString() {
-    String emoji = "Wordle 02/14/2022\n";
+    String emoji = "Wordle 02/14/2022 (${guessesResults.length}/6)\nwordle.fumaz.dev\n";
     var resultsMap = {
       GuessState.correct: "🟩",
       GuessState.wrongPosition: "🟨",
